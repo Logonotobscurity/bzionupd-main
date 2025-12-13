@@ -190,7 +190,7 @@ const ContactDetails = () => {
                 <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl p-2 bg-white">
                     <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:1rem_1rem] rounded-2xl"></div>
                     <Image 
-                        src={hqImage.imageUrl}
+                        src="https://i.ibb.co/cKcvzJrL/traceability-map.png"
                         alt={hqImage.description || ''}
                         fill
                         className="relative object-cover rounded-xl"

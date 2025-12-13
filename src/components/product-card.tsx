@@ -116,14 +116,6 @@ export const ProductCard = ({
                         <p className={cardStyles.brand}>{product.brand}</p>
                         <h3 className={cardStyles.title}>{product.name}</h3>
                     </div>
-                    
-                    {product.categorySlug && (
-                        <div className={cardStyles.badgeContainer}>
-                            <Badge variant="outline" className="text-xs rounded-full border-slate-300 text-slate-600 bg-slate-50/50">
-                                {product.categorySlug}
-                            </Badge>
-                        </div>
-                    )}
                 </div>
                 
                 <div className={cardStyles.buttonWrapper}>

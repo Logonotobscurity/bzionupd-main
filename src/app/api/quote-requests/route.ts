@@ -90,7 +90,7 @@ export async function POST(req: Request) {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="color: #1a202c; margin-top: 0;">Quote Request Received</h2>
-              <p style="color: #4a5568; font-size: 14px;">Thank you for your quote request, ${name}. We've received your inquiry and our team will review it shortly.</p>
+              <p style="color: #4a5568; font-size: 14px;">Thank you for your quote request, ${name}. We\'ve received your inquiry and our team will review it shortly.</p>
             </div>
 
             <div style="background-color: #fff; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px;">
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
             <div style="background-color: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
               <p style="margin: 0; color: #0369a1; font-size: 14px;">
                 <strong>What's Next?</strong><br/>
-                Our sales team will reach out to you within 24 hours with pricing and availability details. You'll also receive a message on WhatsApp for quick communication.
+                Our sales team will reach out to you within 24 hours with pricing and availability details. You\'ll also receive a message on WhatsApp for quick communication.
               </p>
             </div>
 

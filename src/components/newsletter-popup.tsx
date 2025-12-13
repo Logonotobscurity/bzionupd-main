@@ -39,7 +39,6 @@ export const NewsletterPopup = ({ delay = 10000 }: NewsletterPopupProps) => {
 
   const handleClose = () => {
     setIsOpen(false);
-    localStorage.setItem('bzion-newsletter-dismissed', 'true');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,10 +55,13 @@ export const NewsletterPopup = ({ delay = 10000 }: NewsletterPopupProps) => {
       });
 
       if (response.ok) {
+        localStorage.setItem('bzion-newsletter-dismissed', 'true');
         setIsSubmitted(true);
         setTimeout(() => {
           handleClose();
         }, 2000);
+      } else {
+        // Handle non-ok responses if needed, e.g., show an error message
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error);
