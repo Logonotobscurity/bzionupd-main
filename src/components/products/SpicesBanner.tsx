@@ -10,7 +10,7 @@ export const SpicesBanner = () => {
       <div className="container-constrained grid grid-cols-1 md:grid-cols-2">
         <div className="relative min-h-[300px] md:min-h-[500px] bg-gradient-to-br from-red-50 to-orange-100">
           <img
-            src="https://i.ibb.co/RNVf7X/banner-2.png"
+            src="https://i.ibb.co/hxRNVf7X/banner-2.png"
             alt="A variety of colorful spices"
             className="w-full h-full object-cover"
             loading="lazy"

@@ -28,7 +28,7 @@ export const FmcgBanner = () => {
         </div>
         <div className="relative min-h-[300px] md:min-h-[500px] order-1 md:order-2 bg-gradient-to-br from-amber-50 to-amber-100">
           <img
-            src="https://i.ibb.co/pdt2YJc/banner3.png"
+            src="https://i.ibb.co/SDcHPffB/banner3.png"
             alt="A variety of cooking oils"
             className="w-full h-full object-cover"
             loading="lazy"
