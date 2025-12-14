@@ -139,11 +139,51 @@ model User {
   searchQueries    SearchQuery[]
   favorites        UserFavorite[]
   analyticsEvents  AnalyticsEvent[]
+  passwordResetTokens   PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   @@map("users")
+}
+
+// =====================================================
+// AUTHENTICATION TOKEN MODELS
+// =====================================================
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at") // Track if token was already used
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  email     String   // Store email in case it changes
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  verifiedAt DateTime? @map("verified_at") // Track when email was verified
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
 }
 
 model Address {

@@ -258,7 +258,7 @@ export default function AccountPage() {
                   <div className="min-w-0">
                     <p className="text-xs text-primary/60 font-medium">Joined</p>
                     <p className="text-sm text-primary font-medium mt-1">
-                      {user.joinedDate.toLocaleDateString('en-US', {
+                      {(user.joinedDate instanceof Date ? user.joinedDate : new Date(user.joinedDate)).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',

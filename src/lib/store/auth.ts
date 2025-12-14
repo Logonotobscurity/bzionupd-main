@@ -75,6 +75,13 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      merge: (persistedState: any, currentState) => {
+        // Convert joinedDate string back to Date object when hydrating from storage
+        if (persistedState?.user?.joinedDate && typeof persistedState.user.joinedDate === 'string') {
+          persistedState.user.joinedDate = new Date(persistedState.user.joinedDate);
+        }
+        return { ...currentState, ...persistedState };
+      },
     }
   )
 );

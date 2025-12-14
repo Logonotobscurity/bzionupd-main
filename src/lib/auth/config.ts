@@ -1,6 +1,8 @@
 import NextAuth, { DefaultSession } from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from 'next-auth/providers/credentials';
+import GitHub from 'next-auth/providers/github';
+import Google from 'next-auth/providers/google';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import type { User } from '@prisma/client';
@@ -50,7 +52,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       },
     }),
-  ],
+    // Google OAuth Provider
+    process.env.GOOGLE_ID && process.env.GOOGLE_SECRET
+      ? Google({
+          clientId: process.env.GOOGLE_ID,
+          clientSecret: process.env.GOOGLE_SECRET,
+          allowDangerousEmailAccountLinking: false,
+        })
+      : null,
+    // GitHub OAuth Provider
+    process.env.GITHUB_ID && process.env.GITHUB_SECRET
+      ? GitHub({
+          clientId: process.env.GITHUB_ID,
+          clientSecret: process.env.GITHUB_SECRET,
+          allowDangerousEmailAccountLinking: false,
+        })
+      : null,
+  ].filter(Boolean),
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

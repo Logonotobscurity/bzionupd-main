@@ -54,6 +54,29 @@ export async function POST(request: Request) {
       })),
     });
 
+    // Create CRM notification for BZION_HUB
+    try {
+      await (await import('@/lib/db')).prisma.crmNotification.create({
+        data: {
+          type: 'NEW_QUOTE_REQUEST',
+          targetSystem: 'BZION_HUB',
+          priority: 'HIGH',
+          data: {
+            quoteId: quote.id,
+            quoteReference: quote.reference,
+            customerId: quote.customerId,
+            customerEmail: quote.buyerContactEmail,
+            companyName: quote.buyerCompanyId,
+            totalItems: quote.lines.reduce((sum, line) => sum + line.qty, 0),
+            submittedAt: new Date().toISOString(),
+          },
+        },
+      });
+    } catch (notificationError) {
+      console.error('Failed to create CRM notification:', notificationError);
+      // Don't fail the request - notification is non-critical
+    }
+
     // Send confirmation email
     try {
       const emailItems = validated.items.map(item => ({

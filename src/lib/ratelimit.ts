@@ -24,9 +24,14 @@ export const ratelimit = redis ? {
     limiter: Ratelimit.slidingWindow(3, '1 h'),
     analytics: true,
   }),
+  newsletter: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, '1 h'),
+    analytics: true,
+  }),
 } : null;
 
-export async function checkRateLimit(identifier: string, type: 'api' | 'auth' | 'rfq' = 'api') {
+export async function checkRateLimit(identifier: string, type: 'api' | 'auth' | 'rfq' | 'newsletter' = 'api') {
   if (!ratelimit) {
     // Fallback when Redis is not configured - allow all requests
     return {
