@@ -41,7 +41,19 @@ export async function POST(request: Request) {
 
     const { name, email, password, company } = validation.data;
 
-    const exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    let exists;
+    try {
+      exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return NextResponse.json(
+        { 
+          error: 'Database service is temporarily unavailable. Please try again later.',
+          code: 'DB_CONNECTION_ERROR'
+        },
+        { status: 503 }
+      );
+    }
     if (exists) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
     }
@@ -109,9 +121,25 @@ export async function POST(request: Request) {
       { status: 201, headers }
     );
   } catch (error) {
-    // Catch any other unexpected errors
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Registration failed due to a server error' }, { status: 500 });
+    
+    // Check if it's a database connection error
+    if (error instanceof Error) {
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('connect')) {
+        return NextResponse.json(
+          { 
+            error: 'Database service is temporarily unavailable. Please try again later.',
+            code: 'DB_CONNECTION_ERROR'
+          },
+          { status: 503 }
+        );
+      }
+    }
+    
+    return NextResponse.json(
+      { error: 'Registration failed due to a server error' }, 
+      { status: 500 }
+    );
   }
 }
 
