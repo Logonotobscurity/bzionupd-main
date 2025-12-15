@@ -93,4 +93,3 @@ export const { handlers, signIn, signOut, auth: authExport } = nextAuthConfig;
 
 // Explicitly export auth as a function for better compatibility
 export const auth = authExport;
-export { handlers, signIn, signOut };
