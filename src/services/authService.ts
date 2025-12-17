@@ -7,7 +7,6 @@
 import { prisma } from '@/lib/db';
 import type { User } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
-import { createPasswordResetToken, resetPasswordWithToken } from '@/lib/password-reset';
 import { createVerificationToken, verifyEmail } from '@/lib/email-verification';
 import { sendEmailVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '@/lib/email-service';
 
@@ -109,6 +108,7 @@ export async function registerUserWithEmail(
 /**
  * Initiate password reset
  */
+/*
 export async function initiatePasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -142,10 +142,12 @@ export async function initiatePasswordReset(email: string): Promise<{ success: b
     };
   }
 }
+*/
 
 /**
  * Complete password reset
  */
+/*
 export async function completePasswordReset(
   token: string,
   newPassword: string
@@ -169,6 +171,7 @@ export async function completePasswordReset(
     };
   }
 }
+*/
 
 /**
  * Verify email with token
