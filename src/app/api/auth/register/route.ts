@@ -1,19 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth/utils';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { createVerificationToken } from '@/lib/email-verification';
-import { sendEmailVerificationEmail, sendWelcomeEmail } from '@/lib/email-service';
+import { signIn } from '@/lib/auth';
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters long' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string()
-    .min(8, { message: 'Password must be at least 8 characters long' })
-    .regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter' })
-    .regex(/[A-Z]/, { message: 'Password must contain at least one uppercase letter' })
-    .regex(/[0-9]/, { message: 'Password must contain at least one number' }),
   company: z.string().optional(),
 });
 
@@ -39,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, email, password, company } = validation.data;
+    const { name, email, company } = validation.data;
 
     let exists;
     try {
@@ -55,16 +48,23 @@ export async function POST(request: Request) {
       );
     }
     if (exists) {
-      return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
+        // If the user already exists, we don't want to give away that information.
+        // Instead, we'll just send a magic link to the existing user.
+        await signIn('email', { email, redirect: false });
+        return NextResponse.json(
+            {
+              success: true,
+              message: 'If an account with this email exists, a magic link has been sent.',
+            },
+            { status: 200, headers }
+          );
     }
 
-    const hashedPassword = await hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
         firstName: name,
         email: email.toLowerCase(),
-        passwordHash: hashedPassword,
         companyName: company,
         role: 'customer',
       },
@@ -94,29 +94,13 @@ export async function POST(request: Request) {
       // Don't fail registration - User was already created successfully
     }
 
-    // Create verification token and send email (non-blocking)
-    try {
-      const verificationToken = await createVerificationToken(user.id, user.email);
-      
-      if (verificationToken) {
-        // Send verification email
-        await sendEmailVerificationEmail(user.email, verificationToken);
-        
-        // Send welcome email
-        await sendWelcomeEmail(user.email, user.firstName || undefined);
-      } else {
-        console.warn('Failed to create verification token for:', user.email);
-      }
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      // Don't fail registration - User was already created successfully
-    }
+    await signIn('email', { email: user.email, redirect: false });
 
     return NextResponse.json(
       { 
         success: true, 
         userId: user.id,
-        message: 'Registration successful! Please check your email to verify your account.',
+        message: 'Registration successful! Please check your email for a magic link to log in.',
       },
       { status: 201, headers }
     );
@@ -142,4 +126,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
