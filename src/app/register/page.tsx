@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Mail, Lock, User, Building, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
+import { Loader2, Mail, User, Building } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,28 +16,17 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Error',
-        description: 'Passwords do not match.',
-        variant: 'destructive',
-      });
-      return;
-    }
     setIsLoading(true);
 
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, company }),
+        body: JSON.stringify({ name, email, company }),
       });
 
       const data = await response.json();
@@ -49,9 +37,9 @@ export default function RegisterPage() {
 
       toast({
         title: 'Registration Successful',
-        description: 'Please sign in to continue.',
+        description: 'Please check your email for a magic link to log in.',
       });
-      router.push('/login');
+      router.push('/auth/verify-request');
     } catch (error) {
       toast({
         title: 'Registration Failed',
@@ -93,31 +81,6 @@ export default function RegisterPage() {
                <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input id="email" type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10" />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                  id="password" 
-                  type={showPassword ? 'text' : 'password'} 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  className="pl-10 pr-12" 
-                />
-                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </Button>
-              </div>
-              <PasswordStrengthMeter password={password} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="pl-10" />
               </div>
             </div>
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
