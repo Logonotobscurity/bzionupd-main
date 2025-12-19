@@ -20,90 +20,116 @@ export interface ActivityEvent {
   status: string;
 }
 
+/**
+ * Wrapper function to add timeout protection to async database queries
+ * Prevents hanging requests and ensures faster page loads
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) =>
+    setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+}
+
 export async function getRecentActivities(limit: number = 20): Promise<ActivityEvent[]> {
   try {
     // Get recent user registrations
-    const newUsers = await prisma.user.findMany({
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        createdAt: true,
-        emailVerified: true,
-      },
-    });
+    const newUsers = await withTimeout(
+      prisma.user.findMany({
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          createdAt: true,
+          emailVerified: true,
+        },
+      }),
+      4000
+    );
 
     // Get recent quote requests
-    const quotes = await prisma.quote.findMany({
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        reference: true,
-        status: true,
-        total: true,
-        createdAt: true,
-        user: {
-          select: {
-            email: true,
-            firstName: true,
-            lastName: true,
+    const quotes = await withTimeout(
+      prisma.quote.findMany({
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          lines: {
+            select: { id: true },
           },
         },
-        lines: {
-          select: { id: true },
-        },
-      },
-    });
+      }),
+      4000
+    );
 
     // Get recent form submissions
-    const formSubmissions = await prisma.formSubmission.findMany({
-      take: limit,
-      orderBy: { submittedAt: 'desc' },
-      select: {
-        id: true,
-        formType: true,
-        data: true,
-        submittedAt: true,
-        status: true,
-      },
-    });
+    const formSubmissions = await withTimeout(
+      prisma.formSubmission.findMany({
+        take: limit,
+        orderBy: { submittedAt: 'desc' },
+        select: {
+          id: true,
+          formType: true,
+          data: true,
+          submittedAt: true,
+          status: true,
+        },
+      }),
+      4000
+    );
 
     // Get recent newsletter signups
-    const newsletterSignups = await prisma.newsletterSubscriber.findMany({
-      take: limit,
-      orderBy: { subscribedAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        subscribedAt: true,
-        status: true,
-      },
-    });
+    const newsletterSignups = await withTimeout(
+      prisma.newsletterSubscriber.findMany({
+        take: limit,
+        orderBy: { subscribedAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          subscribedAt: true,
+          status: true,
+        },
+      }),
+      4000
+    );
 
     // Get recent checkout events (from analytics)
-    const checkoutEvents = await prisma.analyticsEvent.findMany({
-      where: {
-        eventType: 'checkout_completed',
-      },
-      take: limit,
-      orderBy: { timestamp: 'desc' },
-      select: {
-        id: true,
-        data: true,
-        timestamp: true,
-        user: {
-          select: {
-            email: true,
-            firstName: true,
-            lastName: true,
+    const checkoutEvents = await withTimeout(
+      prisma.analyticsEvent.findMany({
+        where: {
+          eventType: 'checkout_completed',
+        },
+        take: limit,
+        orderBy: { timestamp: 'desc' },
+        select: {
+          id: true,
+          data: true,
+          timestamp: true,
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
           },
         },
-      },
-    });
+      }),
+      4000
+    );
 
     // Convert all to unified activity format
     const activities: ActivityEvent[] = [];
@@ -216,29 +242,32 @@ export async function getActivityStats() {
       totalNewsletterSubscribers,
       totalFormSubmissions,
       totalCheckouts,
-    ] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({
-        where: {
-          createdAt: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+    ] = await withTimeout(
+      Promise.all([
+        prisma.user.count(),
+        prisma.user.count({
+          where: {
+            createdAt: {
+              gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+            },
           },
-        },
-      }),
-      prisma.quote.count(),
-      prisma.quote.count({
-        where: {
-          status: { in: ['draft', 'pending'] },
-        },
-      }),
-      prisma.newsletterSubscriber.count({
-        where: { status: 'active' },
-      }),
-      prisma.formSubmission.count(),
-      prisma.analyticsEvent.count({
-        where: { eventType: 'checkout_completed' },
-      }),
-    ]);
+        }),
+        prisma.quote.count(),
+        prisma.quote.count({
+          where: {
+            status: { in: ['draft', 'pending'] },
+          },
+        }),
+        prisma.newsletterSubscriber.count({
+          where: { status: 'active' },
+        }),
+        prisma.formSubmission.count(),
+        prisma.analyticsEvent.count({
+          where: { eventType: 'checkout_completed' },
+        }),
+      ]),
+      4000
+    );
 
     return {
       totalUsers,
@@ -265,30 +294,33 @@ export async function getActivityStats() {
 
 export async function getQuotes(status?: string, limit: number = 50) {
   try {
-    const quotes = await prisma.quote.findMany({
-      where: status ? { status } : undefined,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        reference: true,
-        status: true,
-        total: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          select: {
-            email: true,
-            firstName: true,
-            lastName: true,
-            companyName: true,
+    const quotes = await withTimeout(
+      prisma.quote.findMany({
+        where: status ? { status } : undefined,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+              companyName: true,
+            },
+          },
+          lines: {
+            select: { id: true },
           },
         },
-        lines: {
-          select: { id: true },
-        },
-      },
-    });
+      }),
+      4000
+    );
     return quotes;
   } catch (error) {
     console.error('Error fetching quotes:', error);
@@ -298,25 +330,28 @@ export async function getQuotes(status?: string, limit: number = 50) {
 
 export async function getNewUsers(limit: number = 50) {
   try {
-    const users = await prisma.user.findMany({
-      where: {
-        role: 'customer',
-      },
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        companyName: true,
-        phone: true,
-        createdAt: true,
-        lastLogin: true,
-        emailVerified: true,
-        isNewUser: true,
-      },
-    });
+    const users = await withTimeout(
+      prisma.user.findMany({
+        where: {
+          role: 'customer',
+        },
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          companyName: true,
+          phone: true,
+          createdAt: true,
+          lastLogin: true,
+          emailVerified: true,
+          isNewUser: true,
+        },
+      }),
+      4000
+    );
     return users;
   } catch (error) {
     console.error('Error fetching new users:', error);
@@ -326,17 +361,20 @@ export async function getNewUsers(limit: number = 50) {
 
 export async function getNewsletterSubscribers(limit: number = 50) {
   try {
-    const subscribers = await prisma.newsletterSubscriber.findMany({
-      take: limit,
-      orderBy: { subscribedAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        status: true,
-        subscribedAt: true,
-        unsubscribedAt: true,
-      },
-    });
+    const subscribers = await withTimeout(
+      prisma.newsletterSubscriber.findMany({
+        take: limit,
+        orderBy: { subscribedAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          subscribedAt: true,
+          unsubscribedAt: true,
+        },
+      }),
+      4000
+    );
     return subscribers;
   } catch (error) {
     console.error('Error fetching newsletter subscribers:', error);
@@ -346,18 +384,21 @@ export async function getNewsletterSubscribers(limit: number = 50) {
 
 export async function getFormSubmissions(limit: number = 50) {
   try {
-    const submissions = await prisma.formSubmission.findMany({
-      take: limit,
-      orderBy: { submittedAt: 'desc' },
-      select: {
-        id: true,
-        formType: true,
-        data: true,
-        submittedAt: true,
-        status: true,
-        ipAddress: true,
-      },
-    });
+    const submissions = await withTimeout(
+      prisma.formSubmission.findMany({
+        take: limit,
+        orderBy: { submittedAt: 'desc' },
+        select: {
+          id: true,
+          formType: true,
+          data: true,
+          submittedAt: true,
+          status: true,
+          ipAddress: true,
+        },
+      }),
+      4000
+    );
     return submissions;
   } catch (error) {
     console.error('Error fetching form submissions:', error);
@@ -367,10 +408,13 @@ export async function getFormSubmissions(limit: number = 50) {
 
 export async function updateFormSubmissionStatus(id: string, status: string) {
   try {
-    const updated = await prisma.formSubmission.update({
-      where: { id },
-      data: { status },
-    });
+    const updated = await withTimeout(
+      prisma.formSubmission.update({
+        where: { id },
+        data: { status },
+      }),
+      4000
+    );
     return updated;
   } catch (error) {
     console.error('Error updating form submission:', error);

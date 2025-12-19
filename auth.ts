@@ -51,6 +51,10 @@ declare module "next-auth/jwt" {
 
 // ✅ CORRECT PATTERN FOR NEXTAUTH V4
 // In NextAuth v4.24.7, NextAuth() returns handler directly usable as GET/POST
+// Configure the base URL for callbacks
+const baseUrl = process.env.NEXTAUTH_URL || 
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma) as Adapter,
   session: { strategy: "jwt" },

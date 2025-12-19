@@ -34,7 +34,7 @@
 
 [context.production]
   command = "npm run build"
-  environment = { NODE_ENV = "production" }
+  environment = { NODE_ENV = "production", NEXTAUTH_URL = "https://bzionshopfmcg.netlify.app" }
 
 [context.deploy-preview]
   command = "npm run build"
