@@ -16,9 +16,9 @@ import {
 import { adjustStock } from '@/app/admin/_actions/stock';
 
 interface ManageStockPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 async function getProduct(id: number) {
@@ -36,7 +36,8 @@ async function getProduct(id: number) {
 }
 
 export default async function ManageStockPage({ params }: ManageStockPageProps) {
-  const product = await getProduct(parseInt(params.id, 10));
+  const resolvedParams = await params;
+  const product = await getProduct(parseInt(resolvedParams.id, 10));
 
   if (!product) {
     return notFound();

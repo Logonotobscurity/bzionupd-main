@@ -4,14 +4,15 @@ import { ProductForm } from '../../_components/product-form';
 import { notFound } from 'next/navigation';
 
 interface EditProductPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function EditProductPage({ params }: EditProductPageProps) {
+  const resolvedParams = await params;
   const product = await prisma.product.findUnique({
-    where: { id: parseInt(params.id, 10) },
+    where: { id: parseInt(resolvedParams.id, 10) },
   });
 
   if (!product) {

@@ -21,9 +21,9 @@ import { Input } from '@/components/ui/input';
 import { Prisma } from '@prisma/client';
 
 interface ProductsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string;
-  };
+  }>;
 }
 
 async function getProducts(search: string | undefined) {
@@ -54,7 +54,8 @@ async function getProducts(search: string | undefined) {
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const products = await getProducts(searchParams.search);
+  const resolvedSearchParams = await searchParams;
+  const products = await getProducts(resolvedSearchParams.search);
 
   return (
     <div className="container mx-auto py-8">
@@ -70,7 +71,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </CardHeader>
         <CardContent>
           <form className="mb-4">
-            <Input name="search" placeholder="Search by name or SKU" defaultValue={searchParams.search || ''} />
+            <Input name="search" placeholder="Search by name or SKU" defaultValue={resolvedSearchParams.search || ''} />
           </form>
           <Table>
             <TableHeader>
