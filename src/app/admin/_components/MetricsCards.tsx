@@ -55,20 +55,20 @@ export function MetricsCards({ stats }: MetricsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
       {metrics.map((metric, index) => {
         const Icon = metric.icon;
         return (
           <Card key={index} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-              <div className={`p-2 rounded-lg ${metric.color}`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 py-3 md:px-6 md:py-4">
+              <CardTitle className="text-xs md:text-sm font-medium truncate">{metric.title}</CardTitle>
+              <div className={`p-2 rounded-lg ${metric.color} flex-shrink-0`}>
                 <Icon className="h-4 w-4" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metric.value.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">{metric.change}</p>
+            <CardContent className="px-4 py-3 md:px-6 md:py-4">
+              <div className="text-xl md:text-2xl font-bold">{metric.value.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{metric.change}</p>
             </CardContent>
           </Card>
         );
