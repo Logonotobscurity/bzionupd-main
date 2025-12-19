@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WelcomeAlert } from '@/components/auth/WelcomeAlert';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useActivityStore } from '@/stores/activity';
@@ -61,34 +63,95 @@ const LoadingSkeleton = () => (
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
-  const { activities } = useActivityStore();
+  const { data: session, status } = useSession();
+  const { activities: storeActivities } = useActivityStore();
   const [isClient, setIsClient] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [dbActivities, setDbActivities] = useState<any[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // Fetch database activities when session is ready
   useEffect(() => {
-    if (isClient && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router, isClient]);
+    if (session?.user?.id) {
+      const fetchActivities = async () => {
+        try {
+          setLoadingActivities(true);
+          const response = await fetch('/api/user/activities?limit=20');
+          if (response.ok) {
+            const data = await response.json();
+            setDbActivities(data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch activities:', error);
+        } finally {
+          setLoadingActivities(false);
+        }
+      };
 
-  if (!isClient || !isAuthenticated || !user) {
+      fetchActivities();
+    }
+  }, [session?.user?.id]);
+
+  // NOTE: Middleware (proxy.ts) handles authentication redirect to /login
+  // This component is only reachable by authenticated users
+  // No need for client-side auth checks - trust the proxy
+
+  // Wait for session to load
+  if (!isClient || status === 'loading') {
     return <LoadingSkeleton />;
   }
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  // If no session, middleware should have redirected already
+  if (!session?.user) {
+    return <LoadingSkeleton />;
+  }
+
+  const user = session.user;
+
+  const handleLogout = async () => {
+    // Use NextAuth signOut instead of legacy logout
+    const { signOut } = await import('next-auth/react');
+    await signOut({ redirect: true, callbackUrl: '/' });
   };
 
-  const userActivities = activities.slice(0, 20);
+  // Transform database activities to match the Activity interface
+  const transformedDbActivities = dbActivities.map((activity) => ({
+    id: activity.id,
+    type: activity.eventType === 'quote_request' ? 'quote' : 
+          activity.eventType === 'login' ? 'view' :
+          activity.eventType as any,
+    title: activity.eventType === 'quote_request' ? 'Quote Request Submitted' :
+           activity.eventType === 'login' ? 'Logged In' :
+           activity.eventType === 'checkout' ? 'Checkout Completed' :
+           activity.eventType === 'profile_update' ? 'Profile Updated' :
+           activity.eventType === 'password_reset' ? 'Password Reset' :
+           activity.eventType === 'email_verified' ? 'Email Verified' :
+           activity.eventType === 'account_created' ? 'Account Created' :
+           activity.eventType,
+    description: activity.eventType === 'quote_request' ? 
+      `Submitted quote request with ${activity.data?.itemCount || 0} items` :
+      activity.eventType === 'login' ? 'Logged in to account' :
+      activity.eventType === 'checkout' ? 'Completed checkout' :
+      `Activity: ${activity.eventType}`,
+    timestamp: new Date(activity.timestamp),
+    metadata: activity.data,
+    details: activity.data,
+  }));
 
-  // Calculate stats
-  const quoteRequestCount = userActivities.filter((a) => a.type === 'quote').length;
-  const productViewCount = userActivities.filter((a) => a.type === 'view').length;
+  // Merge store and database activities, sorted by timestamp
+  const userActivities = [
+    ...transformedDbActivities,
+    ...storeActivities.map(a => ({ ...a, timestamp: new Date(a.timestamp) }))
+  ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 20);
+
+  // Calculate stats from database activities
+  const quoteRequestCount = dbActivities.filter((a) => a.eventType === 'quote_request').length;
+  const loginCount = dbActivities.filter((a) => a.eventType === 'login').length;
+  const checkoutCount = dbActivities.filter((a) => a.eventType === 'checkout').length;
 
   return (
     <>
@@ -105,11 +168,15 @@ export default function AccountPage() {
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-secondary via-secondary/80 to-primary rounded-2xl opacity-0 group-hover:opacity-40 blur-lg transition-opacity"></div>
                 <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center text-primary font-bold shadow-xl text-3xl sm:text-4xl">
-                  {user.name.split(' ')[0][0]}{user.name.split(' ')[1]?.[0] || ''}
+                  {user.firstName?.[0]}{user.lastName?.[0] || user.name?.split(' ')[1]?.[0] || ''}
                 </div>
               </div>
               <div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">{user.name}</h1>
+                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                  {user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.name || 'User'}
+                </h1>
                 <p className="text-primary-foreground/90 flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-secondary"></span>
                   <span className="text-sm">Active Now</span>
@@ -132,6 +199,16 @@ export default function AccountPage() {
 
       {/* Main Content */}
       <Section className="py-8 sm:py-12 -mt-16 sm:-mt-20 relative z-20">
+        {/* Welcome Alert */}
+        {showWelcome && session?.user && (
+          <WelcomeAlert
+            firstName={session.user.firstName || session.user.name?.split(' ')[0] || 'User'}
+            isNewUser={session.user.isNewUser}
+            lastLogin={session.user.lastLogin}
+            onDismiss={() => setShowWelcome(false)}
+          />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
           {/* Stats Cards - Premium Style with Brand Colors */}
           <div className="group relative flex flex-col rounded-2xl bg-white p-6 shadow-2xl transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02] border border-secondary/20 hover:border-secondary/40">
@@ -168,9 +245,9 @@ export default function AccountPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
-                    <Eye className="h-5 w-5 text-white" />
+                    <ShoppingCart className="h-5 w-5 text-white" />
                   </div>
-                  <h3 className="text-sm font-semibold text-primary">Product Views</h3>
+                  <h3 className="text-sm font-semibold text-primary">Checkouts</h3>
                 </div>
                 <span className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
@@ -179,9 +256,9 @@ export default function AccountPage() {
               </div>
 
               <div className="rounded-lg bg-secondary/5 p-4 border border-secondary/10">
-                <p className="text-xs font-medium text-secondary/60 mb-1">Total Views</p>
-                <p className="text-3xl font-bold text-primary">{productViewCount}</p>
-                <span className="text-xs font-medium text-primary mt-2 block">+{Math.max(3, Math.floor(productViewCount * 0.25))} this week</span>
+                <p className="text-xs font-medium text-secondary/60 mb-1">Total Checkouts</p>
+                <p className="text-3xl font-bold text-primary">{checkoutCount}</p>
+                <span className="text-xs font-medium text-primary mt-2 block">+{Math.max(0, checkoutCount > 0 ? 1 : 0)} this month</span>
               </div>
             </div>
           </div>
@@ -233,22 +310,22 @@ export default function AccountPage() {
                   </div>
                 </div>
 
-                {user.company && (
+                {user.companyName && (
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                     <Building2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
                       <p className="text-xs text-primary/60 font-medium">Company</p>
-                      <p className="text-sm text-primary font-medium mt-1">{user.company}</p>
+                      <p className="text-sm text-primary font-medium mt-1">{user.companyName}</p>
                     </div>
                   </div>
                 )}
 
-                {user.phone && (
+                {user.role && (
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-                    <Phone className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
+                    <Building2 className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <p className="text-xs text-secondary/60 font-medium">Phone</p>
-                      <p className="text-sm text-primary font-medium mt-1">{user.phone}</p>
+                      <p className="text-xs text-secondary/60 font-medium">Role</p>
+                      <p className="text-sm text-primary font-medium mt-1 capitalize">{user.role}</p>
                     </div>
                   </div>
                 )}
@@ -256,13 +333,15 @@ export default function AccountPage() {
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                   <Calendar className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-xs text-primary/60 font-medium">Joined</p>
+                    <p className="text-xs text-primary/60 font-medium">Last Login</p>
                     <p className="text-sm text-primary font-medium mt-1">
-                      {(user.joinedDate instanceof Date ? user.joinedDate : new Date(user.joinedDate)).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
+                      {user.lastLogin 
+                        ? new Date(user.lastLogin).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : 'Just now'}
                     </p>
                   </div>
                 </div>

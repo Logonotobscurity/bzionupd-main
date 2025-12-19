@@ -1,4 +1,3 @@
-
 import NextAuth, { DefaultSession } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Email from "next-auth/providers/email";
@@ -7,6 +6,7 @@ import { prisma } from "@/lib/db";
 import type { JWT } from "next-auth/jwt";
 import * as bcrypt from "bcryptjs";
 import type { Adapter } from "next-auth/adapters";
+import { logActivity } from "@/lib/activity-service";
 
 // Define custom properties on the session and user objects
 declare module "next-auth" {
@@ -49,7 +49,9 @@ declare module "next-auth/jwt" {
   }
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+// ✅ CORRECT PATTERN FOR NEXTAUTH V4
+// In NextAuth v4.24.7, NextAuth() returns handler directly usable as GET/POST
+const handler = NextAuth({
   adapter: PrismaAdapter(prisma) as Adapter,
   session: { strategy: "jwt" },
   pages: {
@@ -86,8 +88,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (user?.hashedPassword && (await bcrypt.compare(credentials.password, user.hashedPassword))) {
-          const { hashedPassword, ...userWithoutPassword } = user;
-          return { ...userWithoutPassword, id: user.id.toString() };
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            companyName: user.companyName,
+            phone: user.phone,
+            isNewUser: user.isNewUser,
+            lastLogin: user.lastLogin,
+          };
         }
         
         return null;
@@ -95,7 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }: any) {
       // When the user signs in, the `user` object from the database is passed.
       if (user) {
         token.id = user.id;
@@ -106,10 +117,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.phone = user.phone;
         token.isNewUser = user.isNewUser;
         token.lastLogin = user.lastLogin;
+
+        // Mark user as not new on first successful login and update lastLogin
+        const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+        if (user.isNewUser || !user.lastLogin) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              isNewUser: false,
+              lastLogin: new Date(),
+            },
+          });
+          token.isNewUser = false;
+          token.lastLogin = new Date();
+          
+          // Log activity for first login
+          await logActivity(userId, 'login', { isFirstLogin: true });
+        } else {
+          // Log regular login activity
+          await logActivity(userId, 'login', { isFirstLogin: false });
+        }
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       // The `session` callback is called after the `jwt` callback.
       // We can transfer the custom properties from the token to the session.
       if (session.user) {
@@ -131,3 +162,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 });
+
+// ✅ NEXTAUTH V4 EXPORTS
+// Export handler for GET/POST routes and wrap in a handlers object
+export const handlers = {
+  GET: handler,
+  POST: handler,
+};
+
+// For server-side usage of auth()
+export const auth = (handler as any).auth;
+
+// For client-side redirects/actions
+export const signIn = (handler as any).signIn;
+export const signOut = (handler as any).signOut;

@@ -137,6 +137,7 @@ model User {
   id               Int       @id @default(autoincrement())
   email            String    @unique
   password         String?
+  hashedPassword   String?   @map("hashed_password")
   firstName        String?   @map("first_name")
   lastName         String?   @map("last_name")
   phone            String?   @unique
@@ -145,6 +146,11 @@ model User {
   isActive         Boolean   @default(true)
   
   companyName      String?   @map("company_name")
+  
+  // Welcome & Onboarding Fields
+  isNewUser        Boolean   @default(true) @map("is_new_user")
+  lastLogin        DateTime? @map("last_login")
+  hasCompletedOnboarding Boolean @default(false) @map("has_completed_onboarding")
 
   accounts         Account[]
   sessions         Session[]

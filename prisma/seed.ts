@@ -70,10 +70,15 @@ async function main() {
 
   // Create or update admin user
   const adminEmail = "bola@bzion.shop";
-  const adminName = "Bola A";
+  const adminName = "Admin User";
   const [adminFirstName, ...adminLastNameParts] = adminName.split(" ");
   const adminLastName = adminLastNameParts.join(" ");
-  const hashedPassword = await bcrypt.hash("password", 10); 
+  const adminPassword = "BzionAdmin@2024!Secure";
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  
+  console.log(`\n📧 Admin Email: ${adminEmail}`);
+  console.log(`🔐 Admin Password: ${adminPassword}`);
+  console.log(`⚠️  Please save this password securely\n`); 
 
   const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail }});
 

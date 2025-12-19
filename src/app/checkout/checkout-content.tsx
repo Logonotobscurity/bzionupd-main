@@ -16,6 +16,7 @@ import { AnimatedDiv } from '@/components/animated-div';
 import { CTASection } from '@/components/cta-section';
 import { Package, Truck, Shield, CheckCircle, User, FileText, Tag } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
 const checkoutSchema = z.object({
@@ -89,6 +90,7 @@ export default function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [requestedBrand, setRequestedBrand] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const brand = searchParams.get('brand');
@@ -112,12 +114,28 @@ export default function CheckoutContent() {
     }
   });
 
+  // Auto-fill form with session data on first load
   useEffect(() => {
-    const savedData = localStorage.getItem('checkoutForm');
-    if (savedData) {
-      form.reset(JSON.parse(savedData));
+    if (session?.user) {
+      const sessionData = {
+        email: session.user.email || '',
+        firstName: session.user.firstName || '',
+        lastName: session.user.lastName || '',
+        company: session.user.companyName || '',
+        address: '',
+        city: '',
+        state: '',
+        phone: session.user.phone || '',
+      };
+      form.reset(sessionData);
+    } else {
+      // For non-authenticated users, check localStorage
+      const savedData = localStorage.getItem('checkoutForm');
+      if (savedData) {
+        form.reset(JSON.parse(savedData));
+      }
     }
-  }, [form]);
+  }, [session, form]);
 
   useEffect(() => {
     const subscription = form.watch((value) => {

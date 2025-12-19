@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export function Header() {
   const [productBrands, setProductBrands] = useState<{ title: string, href: string }[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const { data: session } = useSession();
 
   const pathname = usePathname();
 
@@ -233,9 +235,17 @@ export function Header() {
             <Button asChild size="sm" className="font-semibold">
               <Link href="/products">Shop now</Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="font-semibold">
-              <Link href="/login">Become a Customer</Link>
-            </Button>
+            {session?.user ? (
+              <Button asChild variant="outline" size="sm" className="font-semibold">
+                <Link href="/account">
+                  Welcome back: {session.user.firstName || session.user.email}
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="sm" className="font-semibold">
+                <Link href="/login">Become a Customer</Link>
+              </Button>
+            )}
           </div>
           <div className="md:hidden flex items-center gap-1.5">
             <QuoteListIcon />
@@ -320,11 +330,19 @@ export function Header() {
                   Shop now
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="w-full">
-                <Link href="/login" onClick={toggleMenu}>
-                  Become a Customer
-                </Link>
-              </Button>
+              {session?.user ? (
+                <Button asChild variant="outline" size="lg" className="w-full">
+                  <Link href="/account" onClick={toggleMenu}>
+                    Welcome back: {session.user.firstName || session.user.email}
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="lg" className="w-full">
+                  <Link href="/login" onClick={toggleMenu}>
+                    Become a Customer
+                  </Link>
+                </Button>
+              )}
             </div>
           </SheetContent>
         </Sheet>

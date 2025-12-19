@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { generateQuoteRequestWhatsAppURL } from '@/lib/api/whatsapp';
 import { z } from 'zod';
 import { Resend } from 'resend';
+import { getServerSession } from 'next-auth';
+import { logActivity } from '@/lib/activity-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,9 @@ export async function POST(req: Request) {
   try {
     // Initialize Resend inside the handler, not at module load time
     const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    // Get session for authenticated user activity logging
+    const session = await getServerSession();
     
     const json = await req.json();
     const {
@@ -138,6 +143,21 @@ export async function POST(req: Request) {
     } catch (emailError) {
       console.warn('[ACKNOWLEDGMENT_EMAIL_ERROR]', emailError);
       // Don't fail the request if email fails - quote request still submitted
+    }
+
+    // Log activity for authenticated users
+    if (session?.user?.id) {
+      try {
+        const userId = typeof session.user.id === 'string' ? parseInt(session.user.id, 10) : session.user.id;
+        await logActivity(userId, 'quote_request', {
+          itemCount: items.length,
+          totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
+          company: company || null,
+        });
+      } catch (activityError) {
+        console.warn('[ACTIVITY_LOG_ERROR]', activityError);
+        // Don't fail the request if activity logging fails
+      }
     }
 
     // Return success response - user is redirected to WhatsApp on client side

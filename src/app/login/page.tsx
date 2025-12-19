@@ -19,16 +19,17 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  // Handle redirects for already logged-in users or after successful login
+  // Handle redirects for already logged-in users
+  // NOTE: Middleware (proxy.ts) also handles this redirect
+  // This useEffect ensures smooth UX for authenticated users who land on /login
   useEffect(() => {
-    if (status === 'authenticated') {
-      const userRole = session.user?.role;
-      const redirectUrl = userRole === 'admin' ? '/admin' : '/account';
-      const params = searchParams.toString();
-      
-      router.push(`${redirectUrl}${params ? `?${params}` : ''}`);
+    if (status === 'authenticated' && session?.user) {
+      // Use replace() to avoid adding entry to browser history
+      // Redirect based on role
+      const redirectUrl = session.user.role === 'admin' ? '/admin' : '/account';
+      router.replace(redirectUrl);
     }
-  }, [status, session, router, searchParams]);
+  }, [status, session?.user?.role, router]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
